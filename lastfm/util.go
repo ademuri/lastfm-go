@@ -215,18 +215,33 @@ func formatArgs(args, rules P) (result map[string]string, err error) {
 // GET API //
 /////////////
 func callGet(apiMethod string, params *apiParams, args map[string]interface{}, result interface{}, rules P) (err error) {
+	useAuth := len(params.sk) > 0
+
 	urlParams := url.Values{}
 	urlParams.Add("method", apiMethod)
 	urlParams.Add("api_key", params.apikey)
+	if useAuth {
+		urlParams.Add("sk", params.sk)
+	}
+
+	tmp := make(map[string]string)
+	tmp["method"] = apiMethod
+	tmp["api_key"] = params.apikey
+	tmp["sk"] = params.sk
 
 	formated, err := formatArgs(args, rules)
 	if err != nil {
 		return
 	}
 	for k, v := range formated {
+		tmp[k] = v
 		urlParams.Add(k, v)
 	}
 
+	if useAuth {
+		sig := getSignature(tmp, params.secret)
+		urlParams.Add("api_sig", sig)
+	}
 	uri := constructUrl(UriApiSecBase, urlParams)
 
 	client := &http.Client{}
